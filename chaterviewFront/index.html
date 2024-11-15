@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Application</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f7f7f7;
+      }
+      .chat-container {
+        width: 400px;
+        height: 500px;
+        border: 1px solid #ccc;
+        background-color: white;
+        display: flex;
+        flex-direction: column;
+      }
+      .messages {
+        flex: 1;
+        padding: 10px;
+        overflow-y: auto;
+        border-bottom: 1px solid #ccc;
+      }
+      .input-container {
+        display: flex;
+        padding: 10px;
+      }
+      .input-container input {
+        width: 80%;
+        padding: 10px;
+        margin-right: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      .input-container button {
+        width: 20%;
+        padding: 10px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .input-container button:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chat-container">
+      <div class="messages" id="messages"></div>
+      <div class="input-container">
+        <input type="text" id="messageInput" placeholder="Type a message..." />
+        <button onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+
+    <!-- Stomp.js 라이브러리 로드 -->
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+    <script>
+      let stompClient = null;
+
+      // 웹소켓 연결
+      function connect() {
+        console.log("Connection Started");
+        const socket = new WebSocket("ws://localhost:8080/ws"); // 서버의 WebSocket 엔드포인트
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function (frame) {
+          console.log("Connected: " + frame);
+          stompClient.subscribe("/sub/chat/room/1", function (messageOutput) {
+            showMessage(JSON.parse(messageOutput.body));
+          });
+        });
+      }
+
+      // 메시지 보내기
+      function sendMessage() {
+        const message = document.getElementById("messageInput").value;
+        if (message) {
+          stompClient.send(
+            "/pub/chat/message",
+            {},
+            JSON.stringify({
+              chatRoomId: 1,
+              senderId: 1,
+              senderName: "abc",
+              message: message,
+              messageType: "JOIN",
+            })
+          );
+          document.getElementById("messageInput").value = ""; // 입력 필드 비우기
+        }
+      }
+
+      function showMessage(data) {
+        const messagesContainer = document.getElementById("messages");
+        const messageElement = document.createElement("div");
+        messageElement.classList.add("message");
+
+        // JSON 데이터 추출 및 표시 내용 구성
+        console.log(data.senderName);
+        console.log(data.message);
+        messageElement.textContent = `[${data.senderName}] ${data.message}`;
+
+        messagesContainer.appendChild(messageElement);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight; // 새 메시지가 보이게 스크롤
+      }
+
+      // 페이지 로드 시 연결
+      window.onload = function () {
+        connect();
+      };
+    </script>
+  </body>
+</html>
